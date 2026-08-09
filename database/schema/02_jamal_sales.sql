@@ -1,0 +1,9 @@
+-- Car Dealership Management System
+-- Phase 4 Physical Design
+-- Owner: Jamal
+-- Module: Sales and Payments
+-- Entities:
+--   Salesperson
+--   Sale
+--   SaleItem
+--   Payment
