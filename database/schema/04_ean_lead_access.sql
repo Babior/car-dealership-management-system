@@ -1,9 +1,6 @@
 USE car_dealership_db;
 
 
--- ==========================================
--- 1. MANUFACTURER
--- ==========================================
 
 CREATE TABLE manufacturer (
     manufacturer_id INT NOT NULL AUTO_INCREMENT,
@@ -18,9 +15,7 @@ CREATE TABLE manufacturer (
 );
 
 
--- ==========================================
--- 2. VEHICLE MODEL
--- ==========================================
+
 
 CREATE TABLE vehicle_model (
     model_id INT NOT NULL AUTO_INCREMENT,
@@ -41,9 +36,7 @@ CREATE TABLE vehicle_model (
 );
 
 
--- ==========================================
--- 3. VEHICLE
--- ==========================================
+
 
 CREATE TABLE vehicle (
     vehicle_id INT NOT NULL AUTO_INCREMENT,
@@ -92,9 +85,6 @@ CREATE TABLE vehicle (
 );
 
 
--- ==========================================
--- 4. EMPLOYEE
--- ==========================================
 
 CREATE TABLE employee (
     employee_id INT NOT NULL AUTO_INCREMENT,
@@ -140,9 +130,7 @@ CREATE TABLE employee (
 );
 
 
--- ==========================================
--- INDEX
--- ==========================================
+
 
 CREATE INDEX idx_vehicle_status
 ON vehicle(vehicle_status);
