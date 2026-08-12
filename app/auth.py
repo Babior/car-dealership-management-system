@@ -250,6 +250,11 @@ ROLE_PERMISSIONS = {
         "service",
         "reports",
     },
+
+    "Inventory Officer": {
+        "dashboard",
+        "vehicles",
+    },
 }
 
 
@@ -258,7 +263,7 @@ ROLE_PERMISSIONS = {
 # =====================================================
 
 def has_permission(permission):
-    """Return True if current role has a permission."""
+    """Return True if the current role has a permission."""
 
     role = get_current_role()
 

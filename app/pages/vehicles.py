@@ -1,10 +1,26 @@
 import pandas as pd
 import streamlit as st
 
-from auth import require_permission
+from auth import require_permission, get_current_role
 from db import get_connection
 
+
+# =====================================================
+# ACCESS CONTROL
+# =====================================================
+
 require_permission("vehicles")
+
+current_role = get_current_role()
+
+can_manage_vehicles = (
+    current_role == "Inventory Officer"
+)
+
+
+# =====================================================
+# PAGE HEADER
+# =====================================================
 
 st.title("Vehicle Management")
 st.write("View, search, add and update dealership vehicles.")
@@ -52,17 +68,23 @@ def load_vehicles(search_text="", status_filter="All"):
 
         search_value = f"%{search_text}%"
 
-        parameters.extend([
-            search_value,
-            search_value,
-            search_value
-        ])
+        parameters.extend(
+            [
+                search_value,
+                search_value,
+                search_value,
+            ]
+        )
 
     if status_filter != "All":
-        query += " AND v.vehicle_status = %s"
+        query += """
+            AND v.vehicle_status = %s
+        """
         parameters.append(status_filter)
 
-    query += " ORDER BY v.vehicle_id"
+    query += """
+        ORDER BY v.vehicle_id
+    """
 
     cursor.execute(query, parameters)
     records = cursor.fetchall()
@@ -96,7 +118,11 @@ def load_vehicle(vehicle_id):
         WHERE vehicle_id = %s
     """
 
-    cursor.execute(query, (vehicle_id,))
+    cursor.execute(
+        query,
+        (vehicle_id,),
+    )
+
     vehicle = cursor.fetchone()
 
     cursor.close()
@@ -121,7 +147,9 @@ def load_vehicle_models():
         FROM vehicle_model AS vm
         INNER JOIN manufacturer AS m
             ON vm.manufacturer_id = m.manufacturer_id
-        ORDER BY m.manufacturer_name, vm.model_name
+        ORDER BY
+            m.manufacturer_name,
+            vm.model_name
     """
 
     cursor.execute(query)
@@ -145,8 +173,13 @@ def add_vehicle(
     mileage,
     purchase_price,
     selling_price,
-    vehicle_status
+    vehicle_status,
 ):
+    if get_current_role() != "Inventory Officer":
+        raise PermissionError(
+            "Only an Inventory Officer can add vehicles."
+        )
+
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -173,7 +206,7 @@ def add_vehicle(
             mileage,
             purchase_price,
             selling_price,
-            vehicle_status
+            vehicle_status,
         )
 
         cursor.execute(query, values)
@@ -201,8 +234,13 @@ def update_vehicle(
     mileage,
     purchase_price,
     selling_price,
-    vehicle_status
+    vehicle_status,
 ):
+    if get_current_role() != "Inventory Officer":
+        raise PermissionError(
+            "Only an Inventory Officer can update vehicles."
+        )
+
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -230,7 +268,7 @@ def update_vehicle(
             purchase_price,
             selling_price,
             vehicle_status,
-            vehicle_id
+            vehicle_id,
         )
 
         cursor.execute(query, values)
@@ -246,47 +284,25 @@ def update_vehicle(
 
 
 # =====================================================
-# DELETE VEHICLE
-# =====================================================
-
-def delete_vehicle(vehicle_id):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-        query = """
-            DELETE FROM vehicle
-            WHERE vehicle_id = %s
-        """
-
-        cursor.execute(query, (vehicle_id,))
-        connection.commit()
-
-    except Exception:
-        connection.rollback()
-        raise
-
-    finally:
-        cursor.close()
-        connection.close()
-
-
-# =====================================================
-# VEHICLE MODELS
+# LOAD MODEL LOOKUP DATA
 # =====================================================
 
 try:
     vehicle_models = load_vehicle_models()
 
     model_options = {
-        f"{model['manufacturer_name']} - {model['model_name']}":
-            model["model_id"]
+        (
+            f"{model['manufacturer_name']} - "
+            f"{model['model_name']}"
+        ): model["model_id"]
         for model in vehicle_models
     }
 
     model_id_to_name = {
-        model["model_id"]:
-            f"{model['manufacturer_name']} - {model['model_name']}"
+        model["model_id"]: (
+            f"{model['manufacturer_name']} - "
+            f"{model['model_name']}"
+        )
         for model in vehicle_models
     }
 
@@ -301,71 +317,88 @@ except Exception as error:
 
 
 # =====================================================
+# INVENTORY OFFICER MANAGEMENT NOTICE
+# =====================================================
+
+if can_manage_vehicles:
+    st.info(
+        "You are logged in as Inventory Officer. "
+        "Vehicle add and edit controls are enabled."
+    )
+
+
+# =====================================================
 # ADD VEHICLE FORM
 # =====================================================
 
-st.subheader("Add Vehicle")
+if can_manage_vehicles:
 
-if vehicle_models:
+    st.subheader("Add Vehicle")
 
-    with st.form("add_vehicle_form"):
+    if vehicle_models:
 
-        selected_model = st.selectbox(
-            "Vehicle model",
-            options=list(model_options.keys())
-        )
+        with st.form("add_vehicle_form"):
 
-        vin = st.text_input(
-            "VIN",
-            max_chars=17,
-            placeholder="Enter 17-character VIN"
-        )
+            selected_model = st.selectbox(
+                "Vehicle model",
+                options=list(
+                    model_options.keys()
+                ),
+            )
 
-        manufacture_year = st.number_input(
-            "Manufacture year",
-            min_value=1900,
-            max_value=2100,
-            step=1
-        )
+            vin = st.text_input(
+                "VIN",
+                max_chars=17,
+                placeholder="Enter 17-character VIN",
+            )
 
-        colour = st.text_input(
-            "Colour",
-            max_chars=40
-        )
+            manufacture_year = st.number_input(
+                "Manufacture year",
+                min_value=1886,
+                max_value=2100,
+                step=1,
+            )
 
-        mileage = st.number_input(
-            "Mileage",
-            min_value=0,
-            step=1
-        )
+            colour = st.text_input(
+                "Colour",
+                max_chars=40,
+            )
 
-        purchase_price = st.number_input(
-            "Purchase price",
-            min_value=0.0,
-            step=100.0,
-            format="%.2f"
-        )
+            mileage = st.number_input(
+                "Mileage",
+                min_value=0,
+                step=1,
+            )
 
-        selling_price = st.number_input(
-            "Selling price",
-            min_value=0.0,
-            step=100.0,
-            format="%.2f"
-        )
+            purchase_price = st.number_input(
+                "Purchase price",
+                min_value=0.0,
+                step=100.0,
+                format="%.2f",
+            )
 
-        vehicle_status = st.selectbox(
-            "Vehicle status",
-            [
-                "Available",
-                "Reserved",
-                "Sold",
-                "In Service"
-            ]
-        )
+            selling_price = st.number_input(
+                "Selling price",
+                min_value=0.0,
+                step=100.0,
+                format="%.2f",
+            )
 
-        submit_vehicle = st.form_submit_button(
-            "Add Vehicle"
-        )
+            vehicle_status = st.selectbox(
+                "Vehicle status",
+                [
+                    "Available",
+                    "Reserved",
+                    "Sold",
+                    "In Service",
+                ],
+            )
+
+            submit_vehicle = (
+                st.form_submit_button(
+                    "Add Vehicle"
+                )
+            )
 
         if submit_vehicle:
 
@@ -383,7 +416,9 @@ if vehicle_models:
                 )
 
             else:
-                model_id = model_options[selected_model]
+                model_id = model_options[
+                    selected_model
+                ]
 
                 try:
                     add_vehicle(
@@ -394,26 +429,25 @@ if vehicle_models:
                         int(mileage),
                         float(purchase_price),
                         float(selling_price),
-                        vehicle_status
+                        vehicle_status,
                     )
 
                     st.success(
-                        f"Vehicle with VIN {vin} was added successfully."
+                        f"Vehicle with VIN {vin} "
+                        f"was added successfully."
                     )
 
                     st.rerun()
 
-                except Exception:
+                except Exception as error:
                     st.error(
-                        "Unable to add vehicle. "
-                        "Check that the VIN is unique and "
-                        "that all vehicle information is valid."
+                        f"Unable to add vehicle: {error}"
                     )
 
-else:
-    st.warning(
-        "No vehicle models are available."
-    )
+    else:
+        st.warning(
+            "No vehicle models are available."
+        )
 
 
 # =====================================================
@@ -428,7 +462,9 @@ search_column, status_column = st.columns(2)
 with search_column:
     search_text = st.text_input(
         "Search",
-        placeholder="Enter VIN, manufacturer, or model"
+        placeholder=(
+            "Enter VIN, manufacturer, or model"
+        ),
     )
 
 with status_column:
@@ -439,16 +475,16 @@ with status_column:
             "Available",
             "Reserved",
             "Sold",
-            "In Service"
+            "In Service",
         ],
-        key="vehicle_record_status_filter"
+        key="vehicle_record_status_filter",
     )
 
 
 try:
     vehicles = load_vehicles(
         search_text,
-        status_filter
+        status_filter,
     )
 
     if vehicles:
@@ -460,7 +496,7 @@ try:
 
             display_vehicle.pop(
                 "model_id",
-                None
+                None,
             )
 
             display_vehicles.append(
@@ -468,9 +504,11 @@ try:
             )
 
         st.dataframe(
-            pd.DataFrame(display_vehicles),
-            use_container_width=True,
-            hide_index=True
+            pd.DataFrame(
+                display_vehicles
+            ),
+            width="stretch",
+            hide_index=True,
         )
 
         st.success(
@@ -494,145 +532,171 @@ except Exception as error:
 # EDIT VEHICLE
 # =====================================================
 
-st.divider()
-st.subheader("Edit Vehicle")
+if can_manage_vehicles:
 
-try:
-    all_vehicles = load_vehicles()
+    st.divider()
+    st.subheader("Edit Vehicle")
 
-    if all_vehicles:
+    try:
+        all_vehicles = load_vehicles()
 
-        vehicle_options = {
-            f"{vehicle['vehicle_id']} - "
-            f"{vehicle['vin']} - "
-            f"{vehicle['manufacturer_name']} "
-            f"{vehicle['model_name']}":
-                vehicle["vehicle_id"]
-            for vehicle in all_vehicles
-        }
+        if all_vehicles:
 
-        selected_vehicle_label = st.selectbox(
-            "Select vehicle to edit",
-            options=list(vehicle_options.keys()),
-            key="edit_vehicle_selector"
-        )
+            vehicle_options = {
+                (
+                    f"{vehicle['vehicle_id']} - "
+                    f"{vehicle['vin']} - "
+                    f"{vehicle['manufacturer_name']} "
+                    f"{vehicle['model_name']}"
+                ): vehicle["vehicle_id"]
+                for vehicle in all_vehicles
+            }
 
-        selected_vehicle_id = vehicle_options[
-            selected_vehicle_label
-        ]
-
-        selected_vehicle = load_vehicle(
-            selected_vehicle_id
-        )
-
-        current_model_name = model_id_to_name.get(
-            selected_vehicle["model_id"]
-        )
-
-        model_names = list(
-            model_options.keys()
-        )
-
-        if current_model_name in model_names:
-            current_model_index = model_names.index(
-                current_model_name
-            )
-        else:
-            current_model_index = 0
-
-        with st.form("edit_vehicle_form"):
-
-            edit_model = st.selectbox(
-                "Vehicle model",
-                options=model_names,
-                index=current_model_index
-            )
-
-            edit_vin = st.text_input(
-                "VIN",
-                value=selected_vehicle["vin"],
-                max_chars=17
-            )
-
-            edit_year = st.number_input(
-                "Manufacture year",
-                min_value=1900,
-                max_value=2100,
-                value=int(
-                    selected_vehicle[
-                        "manufacture_year"
-                    ]
+            selected_vehicle_label = st.selectbox(
+                "Select vehicle to edit",
+                options=list(
+                    vehicle_options.keys()
                 ),
-                step=1
+                key="edit_vehicle_selector",
             )
 
-            edit_colour = st.text_input(
-                "Colour",
-                value=selected_vehicle[
-                    "colour"
-                ],
-                max_chars=40
+            selected_vehicle_id = (
+                vehicle_options[
+                    selected_vehicle_label
+                ]
             )
 
-            edit_mileage = st.number_input(
-                "Mileage",
-                min_value=0,
-                value=int(
-                    selected_vehicle[
-                        "mileage"
-                    ]
-                ),
-                step=1
+            selected_vehicle = load_vehicle(
+                selected_vehicle_id
             )
 
-            edit_purchase_price = st.number_input(
-                "Purchase price",
-                min_value=0.0,
-                value=float(
-                    selected_vehicle[
-                        "purchase_price"
-                    ]
-                ),
-                step=100.0,
-                format="%.2f"
-            )
-
-            edit_selling_price = st.number_input(
-                "Selling price",
-                min_value=0.0,
-                value=float(
-                    selected_vehicle[
-                        "selling_price"
-                    ]
-                ),
-                step=100.0,
-                format="%.2f"
-            )
-
-            status_values = [
-                "Available",
-                "Reserved",
-                "Sold",
-                "In Service"
-            ]
-
-            current_status_index = (
-                status_values.index(
-                    selected_vehicle[
-                        "vehicle_status"
-                    ]
+            current_model_name = (
+                model_id_to_name.get(
+                    selected_vehicle["model_id"]
                 )
             )
 
-            edit_status = st.selectbox(
-                "Vehicle status",
-                status_values,
-                index=current_status_index
+            model_names = list(
+                model_options.keys()
             )
 
-            update_button = st.form_submit_button(
-                "Update Vehicle"
-            )
+            if (
+                current_model_name
+                in model_names
+            ):
+                current_model_index = (
+                    model_names.index(
+                        current_model_name
+                    )
+                )
+            else:
+                current_model_index = 0
+
+            with st.form(
+                "edit_vehicle_form"
+            ):
+
+                edit_model = st.selectbox(
+                    "Vehicle model",
+                    options=model_names,
+                    index=current_model_index,
+                )
+
+                edit_vin = st.text_input(
+                    "VIN",
+                    value=selected_vehicle[
+                        "vin"
+                    ],
+                    max_chars=17,
+                )
+
+                edit_year = st.number_input(
+                    "Manufacture year",
+                    min_value=1886,
+                    max_value=2100,
+                    value=int(
+                        selected_vehicle[
+                            "manufacture_year"
+                        ]
+                    ),
+                    step=1,
+                )
+
+                edit_colour = st.text_input(
+                    "Colour",
+                    value=selected_vehicle[
+                        "colour"
+                    ],
+                    max_chars=40,
+                )
+
+                edit_mileage = (
+                    st.number_input(
+                        "Mileage",
+                        min_value=0,
+                        value=int(
+                            selected_vehicle[
+                                "mileage"
+                            ]
+                        ),
+                        step=1,
+                    )
+                )
+
+                edit_purchase_price = (
+                    st.number_input(
+                        "Purchase price",
+                        min_value=0.0,
+                        value=float(
+                            selected_vehicle[
+                                "purchase_price"
+                            ]
+                        ),
+                        step=100.0,
+                        format="%.2f",
+                    )
+                )
+
+                edit_selling_price = (
+                    st.number_input(
+                        "Selling price",
+                        min_value=0.0,
+                        value=float(
+                            selected_vehicle[
+                                "selling_price"
+                            ]
+                        ),
+                        step=100.0,
+                        format="%.2f",
+                    )
+                )
+
+                status_values = [
+                    "Available",
+                    "Reserved",
+                    "Sold",
+                    "In Service",
+                ]
+
+                current_status_index = (
+                    status_values.index(
+                        selected_vehicle[
+                            "vehicle_status"
+                        ]
+                    )
+                )
+
+                edit_status = st.selectbox(
+                    "Vehicle status",
+                    status_values,
+                    index=current_status_index,
+                )
+
+                update_button = (
+                    st.form_submit_button(
+                        "Update Vehicle"
+                    )
+                )
 
             if update_button:
 
@@ -676,7 +740,7 @@ try:
                             float(
                                 edit_selling_price
                             ),
-                            edit_status
+                            edit_status,
                         )
 
                         st.success(
@@ -685,111 +749,32 @@ try:
 
                         st.rerun()
 
-                    except Exception:
+                    except Exception as error:
                         st.error(
-                            "Unable to update vehicle. "
-                            "Check the VIN and other "
-                            "vehicle information."
+                            f"Unable to update vehicle: {error}"
                         )
 
-    else:
-        st.info(
-            "No vehicles are available to edit."
-        )
+        else:
+            st.info(
+                "No vehicles are available to edit."
+            )
 
-except Exception as error:
-    st.error(
-        f"Unable to load vehicle editing section: {error}"
-    )
+    except Exception as error:
+        st.error(
+            f"Unable to load vehicle editing section: {error}"
+        )
 
 
 # =====================================================
-# CONTROLLED DELETE
+# DELETE POLICY
 # =====================================================
 
-st.divider()
-st.subheader("Delete Vehicle")
+if can_manage_vehicles:
 
-st.info(
-    "Vehicle deletion is restricted to Available vehicles. "
-    "If a vehicle is linked to transaction or service history, "
-    "the database may reject the deletion so historical records "
-    "are preserved."
-)
+    st.divider()
 
-try:
-    delete_candidates = load_vehicles(
-        status_filter="Available"
-    )
-
-    if delete_candidates:
-
-        delete_options = {
-            f"{vehicle['vehicle_id']} - "
-            f"{vehicle['vin']} - "
-            f"{vehicle['manufacturer_name']} "
-            f"{vehicle['model_name']}":
-                vehicle["vehicle_id"]
-            for vehicle in delete_candidates
-        }
-
-        delete_selection = st.selectbox(
-            "Select available vehicle",
-            options=list(
-                delete_options.keys()
-            ),
-            key="delete_vehicle_selector"
-        )
-
-        confirm_delete = st.checkbox(
-            "I understand that this action permanently deletes "
-            "the vehicle if the database allows it."
-        )
-
-        if st.button(
-            "Delete Vehicle",
-            type="primary"
-        ):
-
-            if not confirm_delete:
-                st.warning(
-                    "Confirm the deletion before continuing."
-                )
-
-            else:
-
-                vehicle_id_to_delete = (
-                    delete_options[
-                        delete_selection
-                    ]
-                )
-
-                try:
-                    delete_vehicle(
-                        vehicle_id_to_delete
-                    )
-
-                    st.success(
-                        "Vehicle deleted successfully."
-                    )
-
-                    st.rerun()
-
-                except Exception:
-                    st.error(
-                        "This vehicle could not be deleted. "
-                        "It may already be linked to sales, "
-                        "service or other historical records. "
-                        "The vehicle has been preserved."
-                    )
-
-    else:
-        st.info(
-            "There are no Available vehicles eligible "
-            "for controlled deletion."
-        )
-
-except Exception as error:
-    st.error(
-        f"Unable to load delete section: {error}"
+    st.info(
+        "Vehicle deletion is not provided in the application. "
+        "This preserves sales, service and other historical "
+        "records linked to vehicles."
     )

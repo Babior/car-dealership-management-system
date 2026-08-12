@@ -1,14 +1,44 @@
 import pandas as pd
 import streamlit as st
 
-from auth import require_permission
+from auth import (
+    require_permission,
+    get_current_role,
+    get_current_user,
+)
 from db import get_connection
+
+
+# =====================================================
+# ACCESS CONTROL
+# =====================================================
 
 require_permission("service")
 
+current_role = get_current_role()
+current_user = get_current_user()
+
+is_service_advisor = (
+    current_role == "Service Advisor"
+)
+
+is_technician = (
+    current_role == "Technician"
+)
+
+is_branch_manager = (
+    current_role == "Branch Manager"
+)
+
+
+# =====================================================
+# PAGE HEADER
+# =====================================================
 
 st.title("Service Management")
-st.write("Create, view, filter and update dealership service orders.")
+st.write(
+    "Create, view, filter and update dealership service orders."
+)
 
 
 # =====================================================
@@ -101,17 +131,33 @@ def load_mechanics():
 # LOAD SERVICE ORDERS
 # =====================================================
 
-def load_service_orders(status_filter="All"):
+def load_service_orders(
+    status_filter="All",
+    mechanic_id=None,
+):
     connection = get_connection()
     cursor = connection.cursor(dictionary=True)
 
     query = """
         SELECT
             so.service_order_id,
-            CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
+            so.mechanic_id,
+            CONCAT(
+                c.first_name,
+                ' ',
+                c.last_name
+            ) AS customer_name,
             v.vin,
-            CONCAT(mf.manufacturer_name, ' ', vm.model_name) AS vehicle,
-            CONCAT(e.first_name, ' ', e.last_name) AS mechanic_name,
+            CONCAT(
+                mf.manufacturer_name,
+                ' ',
+                vm.model_name
+            ) AS vehicle,
+            CONCAT(
+                e.first_name,
+                ' ',
+                e.last_name
+            ) AS mechanic_name,
             so.service_date,
             so.current_mileage,
             so.service_description,
@@ -136,12 +182,26 @@ def load_service_orders(status_filter="All"):
     parameters = []
 
     if status_filter != "All":
-        query += " AND so.service_status = %s"
+        query += """
+            AND so.service_status = %s
+        """
         parameters.append(status_filter)
 
-    query += " ORDER BY so.service_order_id"
+    if mechanic_id is not None:
+        query += """
+            AND so.mechanic_id = %s
+        """
+        parameters.append(mechanic_id)
 
-    cursor.execute(query, parameters)
+    query += """
+        ORDER BY so.service_order_id
+    """
+
+    cursor.execute(
+        query,
+        parameters,
+    )
+
     records = cursor.fetchall()
 
     cursor.close()
@@ -173,7 +233,11 @@ def load_service_order(service_order_id):
         WHERE service_order_id = %s
     """
 
-    cursor.execute(query, (service_order_id,))
+    cursor.execute(
+        query,
+        (service_order_id,),
+    )
+
     record = cursor.fetchone()
 
     cursor.close()
@@ -194,8 +258,14 @@ def create_service_order(
     current_mileage,
     service_description,
     labour_charge,
-    service_status
+    service_status,
 ):
+    # Restricted action check
+    if get_current_role() != "Service Advisor":
+        raise PermissionError(
+            "Only a Service Advisor can create service orders."
+        )
+
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -222,10 +292,14 @@ def create_service_order(
             current_mileage,
             service_description,
             labour_charge,
-            service_status
+            service_status,
         )
 
-        cursor.execute(query, values)
+        cursor.execute(
+            query,
+            values,
+        )
+
         connection.commit()
 
     except Exception:
@@ -238,7 +312,7 @@ def create_service_order(
 
 
 # =====================================================
-# UPDATE SERVICE ORDER
+# SERVICE ADVISOR UPDATE
 # =====================================================
 
 def update_service_order(
@@ -250,8 +324,14 @@ def update_service_order(
     current_mileage,
     service_description,
     labour_charge,
-    service_status
+    service_status,
 ):
+    if get_current_role() != "Service Advisor":
+        raise PermissionError(
+            "Only a Service Advisor can perform a full "
+            "service-order update."
+        )
+
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -279,10 +359,80 @@ def update_service_order(
             service_description,
             labour_charge,
             service_status,
-            service_order_id
+            service_order_id,
         )
 
-        cursor.execute(query, values)
+        cursor.execute(
+            query,
+            values,
+        )
+
+        connection.commit()
+
+    except Exception:
+        connection.rollback()
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+# =====================================================
+# TECHNICIAN LIMITED UPDATE
+# =====================================================
+
+def technician_update_service_order(
+    service_order_id,
+    current_mileage,
+    service_description,
+    service_status,
+):
+    user = get_current_user()
+
+    if (
+        not user
+        or user.get("role_title") != "Technician"
+    ):
+        raise PermissionError(
+            "Only a Technician can use this update."
+        )
+
+    employee_id = user["employee_id"]
+
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        query = """
+            UPDATE service_order
+            SET
+                current_mileage = %s,
+                service_description = %s,
+                service_status = %s
+            WHERE service_order_id = %s
+              AND mechanic_id = %s
+        """
+
+        values = (
+            current_mileage,
+            service_description,
+            service_status,
+            service_order_id,
+            employee_id,
+        )
+
+        cursor.execute(
+            query,
+            values,
+        )
+
+        if cursor.rowcount == 0:
+            raise PermissionError(
+                "You can only update service orders "
+                "assigned to you."
+            )
+
         connection.commit()
 
     except Exception:
@@ -296,111 +446,159 @@ def update_service_order(
 
 # =====================================================
 # LOAD LOOKUP DATA
+# Service Advisor needs these for create/full edit.
 # =====================================================
 
-try:
-    customers = load_customers()
-    vehicles = load_vehicles()
-    mechanics = load_mechanics()
+customers = []
+vehicles = []
+mechanics = []
 
-    customer_options = {
-        f"{customer['customer_id']} - "
-        f"{customer['first_name']} {customer['last_name']}":
-            customer["customer_id"]
-        for customer in customers
-    }
+customer_options = {}
+vehicle_options = {}
+mechanic_options = {}
 
-    vehicle_options = {
-        f"{vehicle['vehicle_id']} - "
-        f"{vehicle['vin']} - "
-        f"{vehicle['manufacturer_name']} {vehicle['model_name']}":
-            vehicle["vehicle_id"]
-        for vehicle in vehicles
-    }
+if is_service_advisor:
 
-    mechanic_options = {
-        f"{mechanic['employee_id']} - "
-        f"{mechanic['first_name']} {mechanic['last_name']} - "
-        f"{mechanic['specialization']}":
-            mechanic["employee_id"]
-        for mechanic in mechanics
-    }
+    try:
+        customers = load_customers()
+        vehicles = load_vehicles()
+        mechanics = load_mechanics()
 
-except Exception as error:
-    customers = []
-    vehicles = []
-    mechanics = []
+        customer_options = {
+            (
+                f"{customer['customer_id']} - "
+                f"{customer['first_name']} "
+                f"{customer['last_name']}"
+            ): customer["customer_id"]
+            for customer in customers
+        }
 
-    customer_options = {}
-    vehicle_options = {}
-    mechanic_options = {}
+        vehicle_options = {
+            (
+                f"{vehicle['vehicle_id']} - "
+                f"{vehicle['vin']} - "
+                f"{vehicle['manufacturer_name']} "
+                f"{vehicle['model_name']}"
+            ): vehicle["vehicle_id"]
+            for vehicle in vehicles
+        }
 
-    st.error(
-        f"Unable to load service lookup data: {error}"
+        mechanic_options = {
+            (
+                f"{mechanic['employee_id']} - "
+                f"{mechanic['first_name']} "
+                f"{mechanic['last_name']} - "
+                f"{mechanic['specialization']}"
+            ): mechanic["employee_id"]
+            for mechanic in mechanics
+        }
+
+    except Exception as error:
+        st.error(
+            f"Unable to load service lookup data: {error}"
+        )
+
+
+# =====================================================
+# ROLE NOTICE
+# =====================================================
+
+if is_service_advisor:
+    st.info(
+        "Service Advisor access: create and fully update "
+        "service orders."
+    )
+
+elif is_technician:
+    st.info(
+        "Technician access: you can view your assigned "
+        "service orders and update mileage, description "
+        "and status."
+    )
+
+elif is_branch_manager:
+    st.info(
+        "Branch Manager access: service records are "
+        "available in read-only mode."
     )
 
 
 # =====================================================
-# CREATE SERVICE ORDER FORM
+# CREATE SERVICE ORDER
+# SERVICE ADVISOR ONLY
 # =====================================================
 
-st.subheader("Create Service Order")
+if is_service_advisor:
 
-if customers and vehicles and mechanics:
+    st.subheader("Create Service Order")
 
-    with st.form("create_service_order_form"):
+    if customers and vehicles and mechanics:
 
-        selected_customer = st.selectbox(
-            "Customer",
-            options=list(customer_options.keys())
-        )
+        with st.form(
+            "create_service_order_form"
+        ):
 
-        selected_vehicle = st.selectbox(
-            "Vehicle",
-            options=list(vehicle_options.keys())
-        )
+            selected_customer = st.selectbox(
+                "Customer",
+                options=list(
+                    customer_options.keys()
+                ),
+            )
 
-        selected_mechanic = st.selectbox(
-            "Mechanic",
-            options=list(mechanic_options.keys())
-        )
+            selected_vehicle = st.selectbox(
+                "Vehicle",
+                options=list(
+                    vehicle_options.keys()
+                ),
+            )
 
-        service_date = st.date_input(
-            "Service date"
-        )
+            selected_mechanic = st.selectbox(
+                "Mechanic",
+                options=list(
+                    mechanic_options.keys()
+                ),
+            )
 
-        current_mileage = st.number_input(
-            "Current mileage",
-            min_value=0,
-            step=1
-        )
+            service_date = st.date_input(
+                "Service date"
+            )
 
-        service_description = st.text_area(
-            "Service description",
-            max_chars=500,
-            placeholder="Describe the service work required"
-        )
+            current_mileage = st.number_input(
+                "Current mileage",
+                min_value=0,
+                step=1,
+            )
 
-        labour_charge = st.number_input(
-            "Labour charge",
-            min_value=0.0,
-            step=50.0,
-            format="%.2f"
-        )
+            service_description = st.text_area(
+                "Service description",
+                max_chars=500,
+                placeholder=(
+                    "Describe the service work required"
+                ),
+            )
 
-        service_status = st.selectbox(
-            "Service status",
-            [
-                "Scheduled",
-                "In Progress",
-                "Completed",
-                "Cancelled"
-            ]
-        )
+            labour_charge = st.number_input(
+                "Labour charge",
+                min_value=0.0,
+                step=50.0,
+                format="%.2f",
+            )
 
-        create_button = st.form_submit_button(
-            "Create Service Order"
-        )
+            service_status = st.selectbox(
+                "Service status",
+                [
+                    "Scheduled",
+                    "In Progress",
+                    "Completed",
+                    "Cancelled",
+                ],
+            )
+
+            create_button = (
+                st.form_submit_button(
+                    "Create Service Order"
+                )
+            )
 
         if create_button:
 
@@ -442,7 +640,7 @@ if customers and vehicles and mechanics:
                         int(current_mileage),
                         service_description,
                         float(labour_charge),
-                        service_status
+                        service_status,
                     )
 
                     st.success(
@@ -456,11 +654,11 @@ if customers and vehicles and mechanics:
                         f"Unable to create service order: {error}"
                     )
 
-else:
-    st.warning(
-        "Customer, vehicle and mechanic records "
-        "must exist before creating a service order."
-    )
+    else:
+        st.warning(
+            "Customer, vehicle and mechanic records "
+            "must exist before creating a service order."
+        )
 
 
 # =====================================================
@@ -468,7 +666,12 @@ else:
 # =====================================================
 
 st.divider()
-st.subheader("Service Orders")
+
+if is_technician:
+    st.subheader("My Assigned Service Orders")
+else:
+    st.subheader("Service Orders")
+
 
 status_filter = st.selectbox(
     "Filter by service status",
@@ -477,22 +680,46 @@ status_filter = st.selectbox(
         "Scheduled",
         "In Progress",
         "Completed",
-        "Cancelled"
+        "Cancelled",
     ],
-    key="service_status_filter"
+    key="service_status_filter",
 )
 
+
 try:
+
+    technician_employee_id = None
+
+    if is_technician:
+        technician_employee_id = (
+            current_user["employee_id"]
+        )
+
     service_orders = load_service_orders(
-        status_filter
+        status_filter=status_filter,
+        mechanic_id=technician_employee_id,
     )
 
     if service_orders:
 
+        display_orders = []
+
+        for order in service_orders:
+            display_order = order.copy()
+
+            display_order.pop(
+                "mechanic_id",
+                None,
+            )
+
+            display_orders.append(
+                display_order
+            )
+
         st.dataframe(
-            pd.DataFrame(service_orders),
-            use_container_width=True,
-            hide_index=True
+            pd.DataFrame(display_orders),
+            width="stretch",
+            hide_index=True,
         )
 
         st.success(
@@ -505,6 +732,7 @@ try:
         )
 
 except Exception as error:
+
     service_orders = []
 
     st.error(
@@ -513,163 +741,182 @@ except Exception as error:
 
 
 # =====================================================
-# EDIT SERVICE ORDER
+# SERVICE ADVISOR FULL EDIT
 # =====================================================
 
-st.divider()
-st.subheader("Edit Service Order")
+if is_service_advisor:
 
-try:
-    all_service_orders = load_service_orders()
+    st.divider()
+    st.subheader("Edit Service Order")
 
-    if all_service_orders:
+    try:
+        all_service_orders = load_service_orders()
 
-        order_options = {
-            f"Order {order['service_order_id']} - "
-            f"{order['customer_name']} - "
-            f"{order['vehicle']}":
-                order["service_order_id"]
-            for order in all_service_orders
-        }
+        if all_service_orders:
 
-        selected_order_label = st.selectbox(
-            "Select service order",
-            options=list(order_options.keys()),
-            key="edit_service_order_selector"
-        )
+            order_options = {
+                (
+                    f"Order {order['service_order_id']} - "
+                    f"{order['customer_name']} - "
+                    f"{order['vehicle']}"
+                ): order["service_order_id"]
+                for order in all_service_orders
+            }
 
-        selected_order_id = (
-            order_options[
-                selected_order_label
-            ]
-        )
-
-        selected_order = load_service_order(
-            selected_order_id
-        )
-
-        customer_labels = list(
-            customer_options.keys()
-        )
-
-        vehicle_labels = list(
-            vehicle_options.keys()
-        )
-
-        mechanic_labels = list(
-            mechanic_options.keys()
-        )
-
-        customer_ids = list(
-            customer_options.values()
-        )
-
-        vehicle_ids = list(
-            vehicle_options.values()
-        )
-
-        mechanic_ids = list(
-            mechanic_options.values()
-        )
-
-        current_customer_index = (
-            customer_ids.index(
-                selected_order["customer_id"]
-            )
-        )
-
-        current_vehicle_index = (
-            vehicle_ids.index(
-                selected_order["vehicle_id"]
-            )
-        )
-
-        current_mechanic_index = (
-            mechanic_ids.index(
-                selected_order["mechanic_id"]
-            )
-        )
-
-        status_values = [
-            "Scheduled",
-            "In Progress",
-            "Completed",
-            "Cancelled"
-        ]
-
-        current_status_index = (
-            status_values.index(
-                selected_order["service_status"]
-            )
-        )
-
-        with st.form("edit_service_order_form"):
-
-            edit_customer = st.selectbox(
-                "Customer",
-                options=customer_labels,
-                index=current_customer_index
+            selected_order_label = st.selectbox(
+                "Select service order",
+                options=list(
+                    order_options.keys()
+                ),
+                key="edit_service_order_selector",
             )
 
-            edit_vehicle = st.selectbox(
-                "Vehicle",
-                options=vehicle_labels,
-                index=current_vehicle_index
-            )
-
-            edit_mechanic = st.selectbox(
-                "Mechanic",
-                options=mechanic_labels,
-                index=current_mechanic_index
-            )
-
-            edit_service_date = st.date_input(
-                "Service date",
-                value=selected_order[
-                    "service_date"
+            selected_order_id = (
+                order_options[
+                    selected_order_label
                 ]
             )
 
-            edit_mileage = st.number_input(
-                "Current mileage",
-                min_value=0,
-                value=int(
+            selected_order = load_service_order(
+                selected_order_id
+            )
+
+            customer_labels = list(
+                customer_options.keys()
+            )
+
+            vehicle_labels = list(
+                vehicle_options.keys()
+            )
+
+            mechanic_labels = list(
+                mechanic_options.keys()
+            )
+
+            customer_ids = list(
+                customer_options.values()
+            )
+
+            vehicle_ids = list(
+                vehicle_options.values()
+            )
+
+            mechanic_ids = list(
+                mechanic_options.values()
+            )
+
+            current_customer_index = (
+                customer_ids.index(
                     selected_order[
-                        "current_mileage"
+                        "customer_id"
                     ]
-                ),
-                step=1
+                )
             )
 
-            edit_description = st.text_area(
-                "Service description",
-                value=selected_order[
-                    "service_description"
-                ],
-                max_chars=500
-            )
-
-            edit_labour_charge = st.number_input(
-                "Labour charge",
-                min_value=0.0,
-                value=float(
+            current_vehicle_index = (
+                vehicle_ids.index(
                     selected_order[
-                        "labour_charge"
+                        "vehicle_id"
                     ]
-                ),
-                step=50.0,
-                format="%.2f"
+                )
             )
 
-            edit_status = st.selectbox(
-                "Service status",
-                status_values,
-                index=current_status_index
+            current_mechanic_index = (
+                mechanic_ids.index(
+                    selected_order[
+                        "mechanic_id"
+                    ]
+                )
             )
 
-            update_button = st.form_submit_button(
-                "Update Service Order"
+            status_values = [
+                "Scheduled",
+                "In Progress",
+                "Completed",
+                "Cancelled",
+            ]
+
+            current_status_index = (
+                status_values.index(
+                    selected_order[
+                        "service_status"
+                    ]
+                )
             )
+
+            with st.form(
+                "edit_service_order_form"
+            ):
+
+                edit_customer = st.selectbox(
+                    "Customer",
+                    options=customer_labels,
+                    index=current_customer_index,
+                )
+
+                edit_vehicle = st.selectbox(
+                    "Vehicle",
+                    options=vehicle_labels,
+                    index=current_vehicle_index,
+                )
+
+                edit_mechanic = st.selectbox(
+                    "Mechanic",
+                    options=mechanic_labels,
+                    index=current_mechanic_index,
+                )
+
+                edit_service_date = st.date_input(
+                    "Service date",
+                    value=selected_order[
+                        "service_date"
+                    ],
+                )
+
+                edit_mileage = st.number_input(
+                    "Current mileage",
+                    min_value=0,
+                    value=int(
+                        selected_order[
+                            "current_mileage"
+                        ]
+                    ),
+                    step=1,
+                )
+
+                edit_description = st.text_area(
+                    "Service description",
+                    value=selected_order[
+                        "service_description"
+                    ],
+                    max_chars=500,
+                )
+
+                edit_labour_charge = (
+                    st.number_input(
+                        "Labour charge",
+                        min_value=0.0,
+                        value=float(
+                            selected_order[
+                                "labour_charge"
+                            ]
+                        ),
+                        step=50.0,
+                        format="%.2f",
+                    )
+                )
+
+                edit_status = st.selectbox(
+                    "Service status",
+                    status_values,
+                    index=current_status_index,
+                )
+
+                update_button = (
+                    st.form_submit_button(
+                        "Update Service Order"
+                    )
+                )
 
             if update_button:
 
@@ -714,7 +961,7 @@ try:
                             float(
                                 edit_labour_charge
                             ),
-                            edit_status
+                            edit_status,
                         )
 
                         st.success(
@@ -728,12 +975,169 @@ try:
                             f"Unable to update service order: {error}"
                         )
 
-    else:
-        st.info(
-            "No service orders are available to edit."
+        else:
+            st.info(
+                "No service orders are available to edit."
+            )
+
+    except Exception as error:
+        st.error(
+            f"Unable to load service editing section: {error}"
         )
 
-except Exception as error:
-    st.error(
-        f"Unable to load service editing section: {error}"
-    )
+
+# =====================================================
+# TECHNICIAN LIMITED EDIT
+# =====================================================
+
+if is_technician:
+
+    st.divider()
+    st.subheader("Update Assigned Service Order")
+
+    try:
+
+        assigned_orders = load_service_orders(
+            mechanic_id=current_user[
+                "employee_id"
+            ]
+        )
+
+        if assigned_orders:
+
+            technician_order_options = {
+                (
+                    f"Order {order['service_order_id']} - "
+                    f"{order['vehicle']} - "
+                    f"{order['service_status']}"
+                ): order["service_order_id"]
+                for order in assigned_orders
+            }
+
+            technician_order_label = (
+                st.selectbox(
+                    "Select assigned service order",
+                    options=list(
+                        technician_order_options.keys()
+                    ),
+                    key=(
+                        "technician_service_order_selector"
+                    ),
+                )
+            )
+
+            technician_order_id = (
+                technician_order_options[
+                    technician_order_label
+                ]
+            )
+
+            technician_order = (
+                load_service_order(
+                    technician_order_id
+                )
+            )
+
+            technician_status_values = [
+                "Scheduled",
+                "In Progress",
+                "Completed",
+                "Cancelled",
+            ]
+
+            technician_status_index = (
+                technician_status_values.index(
+                    technician_order[
+                        "service_status"
+                    ]
+                )
+            )
+
+            with st.form(
+                "technician_update_form"
+            ):
+
+                technician_mileage = (
+                    st.number_input(
+                        "Current mileage",
+                        min_value=0,
+                        value=int(
+                            technician_order[
+                                "current_mileage"
+                            ]
+                        ),
+                        step=1,
+                    )
+                )
+
+                technician_description = (
+                    st.text_area(
+                        "Service description",
+                        value=(
+                            technician_order[
+                                "service_description"
+                            ]
+                        ),
+                        max_chars=500,
+                    )
+                )
+
+                technician_status = (
+                    st.selectbox(
+                        "Service status",
+                        technician_status_values,
+                        index=technician_status_index,
+                    )
+                )
+
+                technician_update_button = (
+                    st.form_submit_button(
+                        "Update Assigned Order"
+                    )
+                )
+
+            if technician_update_button:
+
+                technician_description = (
+                    technician_description.strip()
+                )
+
+                if not technician_description:
+                    st.error(
+                        "Service description is required."
+                    )
+
+                else:
+
+                    try:
+                        technician_update_service_order(
+                            technician_order_id,
+                            int(
+                                technician_mileage
+                            ),
+                            technician_description,
+                            technician_status,
+                        )
+
+                        st.success(
+                            "Assigned service order "
+                            "updated successfully."
+                        )
+
+                        st.rerun()
+
+                    except Exception as error:
+                        st.error(
+                            f"Unable to update service order: {error}"
+                        )
+
+        else:
+            st.info(
+                "You currently have no assigned "
+                "service orders."
+            )
+
+    except Exception as error:
+        st.error(
+            f"Unable to load assigned service orders: {error}"
+        )
