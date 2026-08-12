@@ -5,38 +5,87 @@ from db import get_connection
 
 st.set_page_config(
     page_title="Car Dealership Management System",
+    page_icon="🚗",
     layout="wide",
 )
 
-st.title("Car Dealership Management System")
-st.write("Welcome to the Car Dealership Management System.")
 
-try:
-    connection = get_connection()
-    cursor = connection.cursor()
+# Application pages
+pages = [
+    st.Page(
+        "pages/dashboard.py",
+        title="Dashboard",
+        icon="🏠",
+        default=True,
+    ),
+    st.Page(
+        "pages/customers.py",
+        title="Customers",
+        icon="👥",
+    ),
+    st.Page(
+        "pages/sales_payments.py",
+        title="Sales & Payments",
+        icon="💳",
+    ),
+    st.Page(
+        "pages/reports.py",
+        title="Reports",
+        icon="📊",
+    ),
+    st.Page(
+        "pages/vehicles.py",
+        title="Vehicles",
+        icon="🚗",
+    ),
+    st.Page(
+        "pages/service.py",
+        title="Service",
+        icon="🔧",
+    ),
+    st.Page(
+        "pages/employees.py",
+        title="Employees",
+        icon="🧑‍💼",
+    ),
+]
 
-    cursor.execute(
-        """
-        SELECT COUNT(*)
-        FROM information_schema.tables
-        WHERE table_schema = %s
-        """,
-        (st.secrets["mysql"]["database"],),
-    )
+navigation = st.navigation(pages)
 
-    table_count = cursor.fetchone()[0]
 
-    st.success(
-        f"Connected to car_dealership_db successfully. "
-        f"{table_count} tables detected."
-    )
+# Database connection status in sidebar
+with st.sidebar:
+    st.markdown("### Database Status")
 
-except Exception as error:
-    st.error(f"Database connection failed: {error}")
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
 
-finally:
-    if "cursor" in locals():
-        cursor.close()
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = %s
+            """,
+            (st.secrets["mysql"]["database"],),
+        )
 
-    if "connection" in locals() and connection.is_connected():
-        connection.close()
+        object_count = cursor.fetchone()[0]
+
+        st.success(
+            f"Connected successfully\n\n"
+            f"{object_count} database objects detected."
+        )
+
+    except Exception as error:
+        st.error(f"Database connection failed: {error}")
+
+    finally:
+        if "cursor" in locals():
+            cursor.close()
+
+        if "connection" in locals() and connection.is_connected():
+            connection.close()
+
+
+navigation.run()
