@@ -1,5 +1,6 @@
 import streamlit as st
 
+from auth import initialize_authentication, login_form, logout
 from db import get_connection
 
 
@@ -10,7 +11,26 @@ st.set_page_config(
 )
 
 
-# Application pages
+# -----------------------------------------------------
+# AUTHENTICATION
+# -----------------------------------------------------
+
+initialize_authentication()
+
+# Prevent access to the application until login succeeds.
+if not st.session_state.authenticated:
+    login_navigation = st.navigation(
+        [st.Page(login_form, title="Login", icon="🔐")],
+        position="hidden",
+    )
+    login_navigation.run()
+    st.stop()
+
+
+# -----------------------------------------------------
+# APPLICATION PAGES
+# -----------------------------------------------------
+
 pages = [
     st.Page(
         "pages/dashboard.py",
@@ -53,9 +73,36 @@ pages = [
 navigation = st.navigation(pages)
 
 
-# Database connection status in sidebar
+# -----------------------------------------------------
+# SIDEBAR
+# -----------------------------------------------------
+
 with st.sidebar:
+    st.markdown("### User Session")
+
+    current_user = st.session_state.get("current_user")
+
+    if current_user:
+        st.success("Authenticated")
+
+        # Display information only when it exists.
+        if current_user.get("username"):
+            st.write(f"**Username:** {current_user['username']}")
+
+        if current_user.get("full_name"):
+            st.write(f"**Employee:** {current_user['full_name']}")
+
+        if current_user.get("role_title"):
+            st.write(f"**Role:** {current_user['role_title']}")
+
+    if st.button("Log out", use_container_width=True):
+        logout()
+
+    st.divider()
     st.markdown("### Database Status")
+
+    connection = None
+    cursor = None
 
     try:
         connection = get_connection()
@@ -81,11 +128,12 @@ with st.sidebar:
         st.error(f"Database connection failed: {error}")
 
     finally:
-        if "cursor" in locals():
+        if cursor is not None:
             cursor.close()
 
-        if "connection" in locals() and connection.is_connected():
+        if connection is not None and connection.is_connected():
             connection.close()
 
 
+# Display the selected page.
 navigation.run()
