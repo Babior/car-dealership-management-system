@@ -5,7 +5,7 @@ USE car_dealership_db;
 -- =====================================================
 -- Shared ID contract:
 -- departments: 1-6
--- job roles: 1-8
+-- job roles: 1-9
 -- employees: 1-18
 -- salespersons: employees 1-6
 -- mechanics: employees 7-12 (mechanic subtype rows added by Winfred)
@@ -43,7 +43,8 @@ VALUES
 (5, 'Technician', 'Performs vehicle inspection, maintenance and repair work'),
 (6, 'HR Officer', 'Handles employee administration and human-resource activities'),
 (7, 'IT Support Officer', 'Provides technical and information-system support'),
-(8, 'Branch Manager', 'Oversees dealership operations and performance');
+(8, 'Branch Manager', 'Oversees dealership operations and performance'),
+(9, 'Inventory Officer', 'Manages vehicle and parts inventory');
 
 -- =====================================================
 -- EMPLOYEES
