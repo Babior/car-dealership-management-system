@@ -63,6 +63,17 @@ ON car_dealership_db.warranty_claim
 TO 'dealership_salesperson';
 
 
+# Supporting salesperson information
+GRANT SELECT
+ON car_dealership_db.salesperson
+TO 'dealership_salesperson';
+
+# Sales staff may view service history when supporting a customer
+GRANT SELECT
+ON car_dealership_db.service_order
+TO 'dealership_salesperson';
+
+
 # ROLE 2: DEALERSHIP FINANCE OFFICER
 # Purpose:
 # Allows finance staff to review customers and sales and to
