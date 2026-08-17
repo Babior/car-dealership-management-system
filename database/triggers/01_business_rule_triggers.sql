@@ -1,17 +1,10 @@
 USE car_dealership_db;
-
--- =========================================================
 -- CAR DEALERSHIP MANAGEMENT SYSTEM
 -- SIX BUSINESS-RULE TRIGGERS
--- MySQL 8.0+
--- =========================================================
 
 
--- =========================================================
 -- TRIGGER 1: Prevent the sale of an unavailable vehicle
--- Owner: Jamal
 -- Table: sale_item
--- =========================================================
 
 DROP TRIGGER IF EXISTS trg_sale_item_check_vehicle;
 
@@ -22,6 +15,7 @@ BEFORE INSERT ON sale_item
 FOR EACH ROW
 BEGIN
     DECLARE current_vehicle_status VARCHAR(20);
+    DECLARE active_sale_count INT DEFAULT 0;
 
     SELECT vehicle_status
     INTO current_vehicle_status
@@ -36,16 +30,26 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'The selected vehicle is not available for sale';
     END IF;
+
+    SELECT COUNT(*)
+    INTO active_sale_count
+    FROM sale_item AS si
+    INNER JOIN sale AS s
+        ON si.sale_id = s.sale_id
+    WHERE si.vehicle_id = NEW.vehicle_id
+      AND s.sale_status IN ('Pending', 'Completed');
+
+    IF active_sale_count > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'The selected vehicle is already assigned to an active sale';
+    END IF;
 END$$
 
 DELIMITER ;
 
 
--- =========================================================
 -- TRIGGER 2: Prevent payment over a sale's total amount
--- Owner: Jamal
 -- Table: payment
--- =========================================================
 
 DROP TRIGGER IF EXISTS trg_payment_prevent_overpayment;
 
@@ -85,11 +89,8 @@ END$$
 DELIMITER ;
 
 
--- =========================================================
 -- TRIGGER 3: Check and deduct part inventory
--- Owner: Winfred
 -- Table: service_part
--- =========================================================
 
 DROP TRIGGER IF EXISTS trg_service_part_manage_stock;
 
@@ -130,11 +131,8 @@ END$$
 DELIMITER ;
 
 
--- =========================================================
 -- TRIGGER 4: Validate a loan installment
--- Owner: Nasir
 -- Table: loan_installment
--- =========================================================
 
 DROP TRIGGER IF EXISTS trg_installment_validate;
 
@@ -185,11 +183,8 @@ END$$
 DELIMITER ;
 
 
--- =========================================================
 -- TRIGGER 5: Complete a loan when all installments are paid
--- Owner: Nasir
 -- Table: loan_installment
--- =========================================================
 
 DROP TRIGGER IF EXISTS trg_loan_update_status;
 
@@ -221,11 +216,8 @@ END$$
 DELIMITER ;
 
 
--- =========================================================
 -- TRIGGER 6: Validate warranty claims
--- Owner: Nasir
 -- Table: warranty_claim
--- =========================================================
 
 DROP TRIGGER IF EXISTS trg_warranty_claim_validate;
 
@@ -269,8 +261,5 @@ END$$
 DELIMITER ;
 
 
--- =========================================================
--- VERIFY THAT ALL SIX TRIGGERS WERE CREATED
--- =========================================================
 
 SHOW TRIGGERS FROM car_dealership_db;

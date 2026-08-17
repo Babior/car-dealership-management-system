@@ -4,9 +4,7 @@
 
 USE car_dealership_db;
 
--- =====================================================
 -- manufacturer
--- =====================================================
 CREATE TABLE manufacturer (
     manufacturer_id INT NOT NULL AUTO_INCREMENT,
     manufacturer_name VARCHAR(100) NOT NULL,
@@ -19,9 +17,7 @@ CREATE TABLE manufacturer (
         UNIQUE (manufacturer_name)
 );
 
--- =====================================================
 -- vehicle_model
--- =====================================================
 CREATE TABLE vehicle_model (
     model_id INT NOT NULL AUTO_INCREMENT,
     manufacturer_id INT NOT NULL,
@@ -40,9 +36,7 @@ CREATE TABLE vehicle_model (
         ON DELETE RESTRICT
 );
 
--- =====================================================
 -- vehicle
--- =====================================================
 CREATE TABLE vehicle (
     vehicle_id INT NOT NULL AUTO_INCREMENT,
     model_id INT NOT NULL,
@@ -89,23 +83,17 @@ CREATE TABLE vehicle (
         )
 );
 
--- =====================================================
 -- department
--- =====================================================
 CREATE TABLE department ( department_id INT AUTO_INCREMENT PRIMARY KEY,
  department_name VARCHAR(80) NOT NULL UNIQUE, description VARCHAR(255)
 );
 
--- =====================================================
 -- job_role
--- =====================================================
 CREATE TABLE job_role ( job_role_id INT AUTO_INCREMENT PRIMARY KEY,
 role_title VARCHAR(80) NOT NULL UNIQUE, description VARCHAR(255)
 );
 
--- =====================================================
 -- employee
--- =====================================================
 CREATE TABLE employee (
     employee_id INT NOT NULL AUTO_INCREMENT,
     department_id INT NOT NULL,
@@ -149,9 +137,7 @@ CREATE TABLE employee (
         )
 );
 
--- =====================================================
 -- salesperson
--- =====================================================
 CREATE TABLE salesperson (
     employee_id INT NOT NULL,
     commission_rate DECIMAL(5,2) NOT NULL,
@@ -171,9 +157,7 @@ CREATE TABLE salesperson (
         REFERENCES employee(employee_id)
 );
 
--- =====================================================
 -- mechanic
--- =====================================================
 CREATE TABLE mechanic (
     employee_id INT NOT NULL,
     specialization VARCHAR(100) NOT NULL,
@@ -187,9 +171,7 @@ CREATE TABLE mechanic (
         REFERENCES employee(employee_id)
 );
 
--- =====================================================
 -- user_account
--- =====================================================
 CREATE TABLE user_account ( user_id INT AUTO_INCREMENT PRIMARY KEY,
 employee_id INT NOT NULL UNIQUE, username VARCHAR(60) NOT NULL UNIQUE,
 password_hash VARCHAR(255) NOT NULL, account_status VARCHAR(20) NOT NULL,
@@ -202,18 +184,14 @@ CONSTRAINT chk_user_account_status
 CHECK (account_status IN ('Active', 'Locked', 'Disabled'))
 );
 
--- =====================================================
 -- customer
--- =====================================================
 CREATE TABLE customer (customer_id INT AUTO_INCREMENT PRIMARY KEY,
 first_name VARCHAR(60) NOT NULL, last_name VARCHAR(60) NOT NULL,
 phone VARCHAR(20) NOT NULL, email VARCHAR(120) UNIQUE,
 address VARCHAR(255), registration_date DATE NOT NULL DEFAULT (CURRENT_DATE)
 );
 
--- =====================================================
 -- sale
--- =====================================================
 CREATE TABLE sale (
     sale_id INT AUTO_INCREMENT,
     customer_id INT NOT NULL,
@@ -260,9 +238,7 @@ CREATE TABLE sale (
     INDEX idx_sale_salesperson (salesperson_id)
 );
 
--- =====================================================
 -- sale_item
--- =====================================================
 CREATE TABLE sale_item (
     sale_id INT NOT NULL,
     vehicle_id INT NOT NULL,
@@ -271,8 +247,7 @@ CREATE TABLE sale_item (
     CONSTRAINT pk_sale_item
         PRIMARY KEY (sale_id, vehicle_id),
 
-    CONSTRAINT uq_sale_item_vehicle
-        UNIQUE (vehicle_id),
+    INDEX idx_sale_item_vehicle (vehicle_id),
 
     CONSTRAINT chk_sale_item_agreed_price
         CHECK (agreed_price >= 0),
@@ -286,9 +261,7 @@ CREATE TABLE sale_item (
         REFERENCES vehicle(vehicle_id)
 );
 
--- =====================================================
 -- payment
--- =====================================================
 CREATE TABLE payment (
     payment_id INT AUTO_INCREMENT,
     sale_id INT NOT NULL,
@@ -334,9 +307,7 @@ CREATE TABLE payment (
     INDEX idx_payment_sale (sale_id)
 );
 
--- =====================================================
 -- loan
--- =====================================================
 CREATE TABLE loan (
     loan_id INT NOT NULL AUTO_INCREMENT,
     sale_id INT NOT NULL,
@@ -376,9 +347,7 @@ CREATE TABLE loan (
         ))
 );
 
--- =====================================================
 -- loan_installment
--- =====================================================
 CREATE TABLE loan_installment (
     loan_id INT NOT NULL,
     installment_number SMALLINT NOT NULL,
@@ -410,9 +379,7 @@ CREATE TABLE loan_installment (
         ))
 );
 
--- =====================================================
 -- part
--- =====================================================
 CREATE TABLE part (
     part_id INT NOT NULL AUTO_INCREMENT,
     part_name VARCHAR(120) NOT NULL,
@@ -437,9 +404,7 @@ CREATE TABLE part (
         CHECK (reorder_level >= 0)
 );
 
--- =====================================================
 -- service_order
--- =====================================================
 CREATE TABLE service_order (
     service_order_id INT NOT NULL AUTO_INCREMENT,
     customer_id INT NOT NULL,
@@ -483,9 +448,7 @@ CREATE TABLE service_order (
         )
 );
 
--- =====================================================
 -- service_part
--- =====================================================
 CREATE TABLE service_part (
     service_order_id INT NOT NULL,
     part_id INT NOT NULL,
@@ -510,9 +473,7 @@ CREATE TABLE service_part (
         CHECK (unit_price_at_use >= 0)
 );
 
--- =====================================================
 -- warranty
--- =====================================================
 CREATE TABLE warranty (
     warranty_id INT NOT NULL AUTO_INCREMENT,
     vehicle_id INT NOT NULL,
@@ -542,9 +503,7 @@ CREATE TABLE warranty (
         ))
 );
 
--- =====================================================
 -- warranty_claim
--- =====================================================
 CREATE TABLE warranty_claim (
     claim_id INT NOT NULL AUTO_INCREMENT,
     warranty_id INT NOT NULL,

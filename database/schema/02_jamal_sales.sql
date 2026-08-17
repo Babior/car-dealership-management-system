@@ -97,8 +97,7 @@ CREATE TABLE sale_item (
     CONSTRAINT pk_sale_item
         PRIMARY KEY (sale_id, vehicle_id),
 
-    CONSTRAINT uq_sale_item_vehicle
-        UNIQUE (vehicle_id),
+    INDEX idx_sale_item_vehicle (vehicle_id),
 
     CONSTRAINT chk_sale_item_agreed_price
         CHECK (agreed_price >= 0),

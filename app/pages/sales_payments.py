@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 
 from db import get_connection
 
@@ -191,6 +192,14 @@ try:
         INNER JOIN manufacturer AS m
             ON vm.manufacturer_id = m.manufacturer_id
         WHERE v.vehicle_status = 'Available'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM sale_item AS si
+              INNER JOIN sale AS s
+                  ON si.sale_id = s.sale_id
+              WHERE si.vehicle_id = v.vehicle_id
+                AND s.sale_status IN ('Pending', 'Completed')
+          )
         ORDER BY m.manufacturer_name, vm.model_name
         """
     )
@@ -402,6 +411,22 @@ if customers and salespersons and available_vehicles:
                         ),
                     )
 
+                    # Reserve the vehicle while the sale is pending
+                    cursor.execute(
+                        """
+                        UPDATE vehicle
+                        SET vehicle_status = 'Reserved'
+                        WHERE vehicle_id = %s
+                          AND vehicle_status = 'Available'
+                        """,
+                        (vehicle_id,),
+                    )
+
+                    if cursor.rowcount != 1:
+                        raise ValueError(
+                            "The selected vehicle could not be reserved."
+                        )
+
                     connection.commit()
 
                     st.success(
@@ -412,6 +437,7 @@ if customers and salespersons and available_vehicles:
                         "The sale is currently Pending. "
                         "Complete it below to mark the vehicle as Sold."
                     )
+                    time.sleep(3)
 
                     st.rerun()
 

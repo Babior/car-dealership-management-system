@@ -73,18 +73,19 @@ BEGIN
             SET MESSAGE_TEXT = 'Sale must contain at least one vehicle.';
     END IF;
 
-    # Ensure vehicles have not become unavailable before completion.
+    # A vehicle attached to a pending sale must be reserved
+    # before that sale can be completed.
     SELECT COUNT(*)
     INTO v_invalid_vehicle_count
     FROM sale_item AS si
     INNER JOIN vehicle AS v
         ON si.vehicle_id = v.vehicle_id
     WHERE si.sale_id = p_sale_id
-      AND v.vehicle_status <> 'Available';
+      AND v.vehicle_status <> 'Reserved';
 
     IF v_invalid_vehicle_count > 0 THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'One or more vehicles are not available for sale completion.';
+            SET MESSAGE_TEXT = 'One or more vehicles are not reserved for sale completion.';
     END IF;
 
     # Mark all vehicles in the sale as sold.

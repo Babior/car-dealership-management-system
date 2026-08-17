@@ -1,15 +1,11 @@
 USE car_dealership_db;
 
--- =========================================================
 -- EAN PHASE 6: INVENTORY AND SERVICE VIEWS
--- =========================================================
 
 
--- =========================================================
 -- VIEW 1: AVAILABLE VEHICLES
 -- Provides reusable information about vehicles that are
 -- currently available for sale.
--- =========================================================
 
 CREATE OR REPLACE VIEW vw_available_vehicles AS
 SELECT
@@ -34,14 +30,12 @@ INNER JOIN manufacturer AS m
 WHERE v.vehicle_status = 'Available';
 
 
--- =========================================================
 -- VIEW 2: VEHICLE SERVICE HISTORY
 -- Provides vehicle, customer, mechanic, service and
 -- historical parts-cost information.
 --
 -- LEFT JOIN is used for service_part because a service
 -- order may be valid even when no parts were used.
--- =========================================================
 
 CREATE OR REPLACE VIEW vw_vehicle_service_history AS
 SELECT
