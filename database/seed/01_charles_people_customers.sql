@@ -1,23 +1,8 @@
 USE car_dealership_db;
 
--- =====================================================
--- PHASE 5: CHARLES - PEOPLE, ORGANIZATION AND CUSTOMERS
--- =====================================================
--- Shared ID contract:
--- departments: 1-6
--- job roles: 1-9
--- employees: 1-18
--- salespersons: employees 1-6
--- mechanics: employees 7-12 (mechanic subtype rows added by Winfred)
--- user accounts: 1-12
--- customers: 1-30
--- =====================================================
-
 START TRANSACTION;
 
--- =====================================================
 -- DEPARTMENTS
--- =====================================================
 
 INSERT INTO department
 (department_id, department_name, description)
@@ -29,9 +14,7 @@ VALUES
 (5, 'IT', 'Manages dealership information systems and technical support'),
 (6, 'Administration', 'Oversees general dealership administration and management');
 
--- =====================================================
 -- JOB ROLES
--- =====================================================
 
 INSERT INTO job_role
 (job_role_id, role_title, description)
@@ -46,14 +29,10 @@ VALUES
 (8, 'Branch Manager', 'Oversees dealership operations and performance'),
 (9, 'Inventory Officer', 'Manages vehicle and parts inventory');
 
--- =====================================================
 -- EMPLOYEES
--- =====================================================
 -- Employees 1-6 are salespersons.
 -- Employees 7-12 will become mechanic subtype records
--- in Winfred's Phase 5 file.
 -- Employees 13-18 are other dealership staff.
--- =====================================================
 
 INSERT INTO employee
 (employee_id, department_id, job_role_id, first_name, last_name,
@@ -113,9 +92,7 @@ VALUES
 (18, 2, 3, 'Adwoa', 'Frimpong', '0244000018',
  'adwoa.frimpong@cardealer.com', '2024-02-05', 6000.00, 'Active');
 
--- =====================================================
 -- SALESPERSON SUBTYPE
--- =====================================================
 
 INSERT INTO salesperson
 (employee_id, commission_rate, sales_target)
@@ -127,12 +104,9 @@ VALUES
 (5, 2.50, 750000.00),
 (6, 3.50, 1200000.00);
 
--- =====================================================
 -- USER ACCOUNTS
--- =====================================================
 -- Only selected employees receive accounts.
 -- Passwords are stored as hashes, not plaintext.
--- =====================================================
 
 INSERT INTO user_account
 (user_id, employee_id, username, password_hash, account_status)
@@ -150,9 +124,7 @@ VALUES
 (11, 11, 'kweku.addo', SHA2('Password123!', 256), 'Active'),
 (12, 12, 'selina.kusi', SHA2('Password123!', 256), 'Active');
 
--- =====================================================
 -- CUSTOMERS
--- =====================================================
 
 INSERT INTO customer
 (customer_id, first_name, last_name, phone, email, address, registration_date)
