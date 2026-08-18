@@ -426,8 +426,8 @@ Ctrl + C
 | Username                | Password                | Role                 |
 | ----------------------- | ----------------------- | -------------------- |
 | `john.mensah`           | `Password123!`          | Sales Consultant     |
-| `abena.mensah`          | `Password123`           | Sales Manager        |
-| `yaw.asare`             | `Password123`           |  Technician          |
+| `abena.mensah`          | `Password123!`           | Sales Manager        |
+| `yaw.asare`             | `Password123!`           |  Technician          |
 
 ---
 
