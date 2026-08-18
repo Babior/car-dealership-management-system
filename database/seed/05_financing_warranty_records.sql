@@ -2,10 +2,8 @@ USE car_dealership_db;
 
 START TRANSACTION;
 
--- =====================================================
 -- 1. LOANS: 10 RECORDS
 -- One loan per sale because sale_id is UNIQUE in loan.
--- =====================================================
 
 INSERT INTO loan
 (
@@ -32,12 +30,10 @@ VALUES
 (10, 20, 'Prudential Bank Limited', 190000.00, 11.00, 5, '2026-07-20', '2026-12-20', 'Pending');
 
 
--- =====================================================
 -- 2. LOAN INSTALLMENTS: 48 RECORDS
 -- Loans 1-2 have 4 installments each.
 -- Loans 3-10 have 5 installments each.
 -- Total: 8 + 40 = 48.
--- =====================================================
 
 INSERT INTO loan_installment
 (
@@ -119,9 +115,7 @@ VALUES
 (10, 5, '2026-12-20', 42180.00, 0.00, NULL, 'Pending');
 
 
--- =====================================================
 -- 3. WARRANTIES: 15 RECORDS
--- =====================================================
 
 INSERT INTO warranty
 (
@@ -152,11 +146,9 @@ VALUES
 (15, 15, 'Mercedes-Benz Ghana Ltd', '0302270016', '2026-01-15', '2029-01-15', 'Powertrain, safety and electronic systems', 'Active');
 
 
--- =====================================================
 -- 4. WARRANTY CLAIMS: 10 RECORDS
 -- Each service order corresponds to the same vehicle as
 -- its warranty in these records.
--- =====================================================
 
 INSERT INTO warranty_claim
 (
@@ -184,11 +176,7 @@ VALUES
 COMMIT;
 
 
--- =====================================================
 -- VERIFICATION
--- Expected: loan 10, installment 48,
--- warranty 15, warranty_claim 10
--- =====================================================
 
 SELECT 'loan' AS table_name, COUNT(*) AS row_count
 FROM loan
