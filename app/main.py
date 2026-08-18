@@ -9,9 +9,7 @@ from auth import (
 from db import get_connection
 
 
-# =====================================================
 # PAGE CONFIGURATION
-# =====================================================
 
 st.set_page_config(
     page_title="Car Dealership Management System",
@@ -20,9 +18,7 @@ st.set_page_config(
 )
 
 
-# =====================================================
 # AUTHENTICATION
-# =====================================================
 
 initialize_authentication()
 
@@ -44,9 +40,7 @@ if not st.session_state.authenticated:
     st.stop()
 
 
-# =====================================================
 # BUILD ROLE-BASED NAVIGATION
-# =====================================================
 
 pages = []
 
@@ -142,9 +136,7 @@ navigation = st.navigation(
 )
 
 
-# =====================================================
 # SIDEBAR USER INFORMATION
-# =====================================================
 
 with st.sidebar:
 
@@ -190,9 +182,8 @@ with st.sidebar:
         logout()
 
 
-    # =================================================
+  
     # DATABASE STATUS
-    # =================================================
 
     st.divider()
 
@@ -249,8 +240,6 @@ with st.sidebar:
             connection.close()
 
 
-# =====================================================
 # RUN SELECTED PAGE
-# =====================================================
 
 navigation.run()
