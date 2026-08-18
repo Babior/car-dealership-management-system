@@ -2,15 +2,14 @@ USE car_dealership_db;
 
 USE car_dealership_db;
 
--- =========================================================
 -- EAN PHASE 6: ADVANCED INVENTORY AND SERVICE QUERIES
--- =========================================================
 
 
--- =========================================================
+
+
 -- QUERY 1: AVAILABLE VEHICLE INVENTORY
 -- Lists every vehicle currently available for sale.
--- =========================================================
+
 
 SELECT
     v.vehicle_id,
@@ -37,10 +36,10 @@ ORDER BY
     v.selling_price;
 
 
--- =========================================================
+
 -- QUERY 2: INVENTORY ANALYSIS
 -- Summarises inventory by manufacturer, model and status.
--- =========================================================
+
 
 SELECT
     m.manufacturer_name,
@@ -67,10 +66,10 @@ ORDER BY
     v.vehicle_status;
 
 
--- =========================================================
+
 -- QUERY 3: COMPLETE VEHICLE SERVICE HISTORY
 -- Shows the vehicle, customer, mechanic and service details.
--- =========================================================
+
 
 SELECT
     so.service_order_id,
@@ -100,10 +99,10 @@ ORDER BY
     so.service_order_id DESC;
 
 
--- =========================================================
+
 -- QUERY 4: PARTS USAGE AND LOW-STOCK ANALYSIS
 -- Uses historical prices recorded when the parts were used.
--- =========================================================
+
 
 SELECT
     p.part_id,
