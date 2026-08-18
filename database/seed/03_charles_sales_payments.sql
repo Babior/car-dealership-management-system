@@ -1,8 +1,8 @@
 USE car_dealership_db;
 
--- =====================================================
+
 -- PHASE 5: CHARLES - SALES AND PAYMENTS
--- =====================================================
+
 -- 25 sales
 -- 25 sale items
 -- 30 payments
@@ -12,15 +12,15 @@ USE car_dealership_db;
 --
 -- Vehicle IDs intentionally left outside sales:
 -- 6, 14, 22, 29, 30
--- =====================================================
+
 
 START TRANSACTION;
 
--- =====================================================
+
 -- SALES
 -- total_amount = agreed_price - discount_amount + tax_amount
 -- Tax used for this sample dataset: approximately 2.5%
--- =====================================================
+
 
 INSERT INTO sale
 (sale_id, customer_id, salesperson_id, sale_date,
@@ -58,11 +58,11 @@ VALUES
 (24, 24, 6, '2026-08-05', 2000.00, 6350.00, 260350.00, 3.50, 'Cancelled', 'Unpaid'),
 (25, 25, 1, '2026-08-07', 3000.00, 6825.00, 279825.00, 3.00, 'Cancelled', 'Unpaid');
 
--- =====================================================
+
 -- SALE ITEMS
 -- One physical vehicle per sale in this dataset.
 -- vehicle_id remains unique across sale_item.
--- =====================================================
+
 
 INSERT INTO sale_item
 (sale_id, vehicle_id, agreed_price)
@@ -97,14 +97,14 @@ VALUES
 (24, 27, 256000.00),
 (25, 28, 276000.00);
 
--- =====================================================
+
 -- PAYMENTS
 -- Sales 1-13: fully paid with one confirmed payment.
 -- Sales 14-18: three confirmed partial payments each.
 -- Sales 19-20: deposits received.
 -- Sales 21-25: no payment records.
 -- Total payment rows = 30.
--- =====================================================
+
 
 INSERT INTO payment
 (payment_id, sale_id, payment_date, amount,
@@ -147,9 +147,9 @@ VALUES
 (29, 19, '2026-07-07 12:30:00', 75542.50, 'Transfer', 'PAY-2026-029', 'Confirmed'),
 (30, 20, '2026-07-18 11:45:00', 49917.50, 'Mobile Money', 'PAY-2026-030', 'Confirmed');
 
--- =====================================================
+
 -- SYNCHRONIZE VEHICLE STATUS WITH SALES
--- =====================================================
+
 
 UPDATE vehicle
 SET vehicle_status = 'Sold'
@@ -169,9 +169,9 @@ WHERE vehicle_id IN (26,27,28);
 
 COMMIT;
 
--- =====================================================
+
 -- VERIFICATION
--- =====================================================
+
 
 SELECT 'sale' AS table_name, COUNT(*) AS row_count FROM sale
 UNION ALL
