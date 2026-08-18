@@ -1,14 +1,8 @@
--- Car Dealership Management System
--- Phase 5: Winfred Inventory Base Data
--- Target rows: 10 manufacturers, 15 vehicle models, 30 vehicles, 20 parts
-
 USE car_dealership_db;
 
 START TRANSACTION;
 
--- =====================================================
 -- 1. MANUFACTURERS (10 records)
--- =====================================================
 INSERT INTO manufacturer (manufacturer_name, country) VALUES
 ('Toyota', 'Japan'),
 ('Honda', 'Japan'),
@@ -21,9 +15,7 @@ INSERT INTO manufacturer (manufacturer_name, country) VALUES
 ('Volkswagen', 'Germany'),
 ('Chevrolet', 'United States');
 
--- =====================================================
 -- 2. VEHICLE MODELS (15 records)
--- =====================================================
 INSERT INTO vehicle_model
     (manufacturer_id, model_name, body_type, fuel_type, transmission)
 VALUES
@@ -43,11 +35,7 @@ VALUES
 ((SELECT manufacturer_id FROM manufacturer WHERE manufacturer_name = 'Volkswagen'), 'Tiguan', 'SUV', 'Petrol', 'Automatic'),
 ((SELECT manufacturer_id FROM manufacturer WHERE manufacturer_name = 'Chevrolet'), 'Equinox', 'SUV', 'Petrol', 'Automatic');
 
--- =====================================================
 -- 3. VEHICLES (30 records)
--- Two vehicles are provided for each model.
--- All VIN values are unique and exactly 17 characters.
--- =====================================================
 INSERT INTO vehicle
     (model_id, vin, manufacture_year, colour, mileage,
      purchase_price, selling_price, vehicle_status)
@@ -83,10 +71,8 @@ VALUES
 ((SELECT model_id FROM vehicle_model WHERE model_name = 'Equinox' AND manufacturer_id = (SELECT manufacturer_id FROM manufacturer WHERE manufacturer_name = 'Chevrolet')), '3GNAXKEV6NL000001', 2022, 'White', 28700, 221000.00, 249500.00, 'Available'),
 ((SELECT model_id FROM vehicle_model WHERE model_name = 'Equinox' AND manufacturer_id = (SELECT manufacturer_id FROM manufacturer WHERE manufacturer_name = 'Chevrolet')), '3GNAXKEV6NL000002', 2021, 'Black', 45900, 198000.00, 225000.00, 'Available');
 
--- =====================================================
 -- 4. PARTS (20 records)
 -- Prices are expressed in Ghana cedis.
--- =====================================================
 INSERT INTO part
     (part_name, part_number, unit_price, quantity_in_stock, reorder_level)
 VALUES
@@ -113,10 +99,7 @@ VALUES
 
 COMMIT;
 
--- =====================================================
 -- VERIFICATION
--- These totals assume the script is run on an empty database.
--- =====================================================
 SELECT 'manufacturer' AS table_name, COUNT(*) AS row_count FROM manufacturer
 UNION ALL
 SELECT 'vehicle_model', COUNT(*) FROM vehicle_model
