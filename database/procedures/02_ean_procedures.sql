@@ -1,6 +1,6 @@
 USE car_dealership_db;
 
--- =========================================================
+
 -- EAN PHASE 6: STORED PROCEDURE
 -- Procedure: sp_complete_service_order
 --
@@ -11,7 +11,7 @@ USE car_dealership_db;
 -- This procedure does not deduct part inventory.
 -- The trg_service_part_manage_stock trigger already deducts
 -- stock when service_part records are inserted.
--- =========================================================
+
 
 DROP PROCEDURE IF EXISTS sp_complete_service_order;
 
