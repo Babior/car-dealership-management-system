@@ -1,7 +1,3 @@
--- =====================================================
--- CAR DEALERSHIP MANAGEMENT SYSTEM
--- DATABASE INITIALIZATION
--- =====================================================
 
 CREATE DATABASE IF NOT EXISTS car_dealership_db
     CHARACTER SET utf8mb4
