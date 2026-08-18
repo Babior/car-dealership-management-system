@@ -1,5 +1,5 @@
 -- Car Dealership Management System
--- Phase 5: Winfred Service Records
+
 -- Contains only records whose parent data is currently available.
 -- Records: 6 mechanics, 25 service orders, 35 service-part rows.
 -- Loans and installments are intentionally excluded until sale records exist.
@@ -8,11 +8,11 @@ USE car_dealership_db;
 
 START TRANSACTION;
 
--- =====================================================
+
 -- PREREQUISITE CHECKS
 -- Expected parent records:
 -- employees 7-12, customers 1-25, vehicles 1-25, parts 1-20
--- =====================================================
+
 SELECT COUNT(*) AS required_employees_found
 FROM employee
 WHERE employee_id BETWEEN 7 AND 12;
@@ -29,10 +29,10 @@ SELECT COUNT(*) AS required_parts_found
 FROM part
 WHERE part_id BETWEEN 1 AND 20;
 
--- =====================================================
+
 -- 1. MECHANIC SUBTYPE (6 records)
 -- Employee IDs 7-12 are the technicians reserved by the shared ID contract.
--- =====================================================
+
 INSERT INTO mechanic (employee_id, specialization, certification) VALUES
 (7,  'Engine Diagnostics and Repair',       'ASE Engine Repair Certification'),
 (8,  'Electrical and Electronic Systems',   'Automotive Electrical Systems Certificate'),
@@ -41,10 +41,10 @@ INSERT INTO mechanic (employee_id, specialization, certification) VALUES
 (11, 'Cooling and Air-Conditioning Systems', 'Automotive HVAC Service Certificate'),
 (12, 'General Maintenance and Inspection',   'Vehicle Inspection and Maintenance Certificate');
 
--- =====================================================
+
 -- 2. SERVICE ORDERS (25 records)
 -- Each order references an existing customer, vehicle and mechanic.
--- =====================================================
+
 INSERT INTO service_order
     (service_order_id, customer_id, vehicle_id, mechanic_id,
      service_date, current_mileage, service_description,
@@ -76,11 +76,11 @@ VALUES
 (24, 24, 24, 12, '2026-01-14', 43780, 'Scheduled maintenance and multi-point inspection',                          490.00,  'Scheduled'),
 (25, 25, 25, 7,  '2026-02-06', 26650, 'Engine warning-light diagnosis and tune-up',                                730.00,  'Scheduled');
 
--- =====================================================
+
 -- 3. SERVICE PARTS (35 records)
 -- unit_price_at_use preserves the historical selling price of each part.
 -- If trg_service_part_manage_stock is installed, it will deduct stock.
--- =====================================================
+
 INSERT INTO service_part
     (service_order_id, part_id, quantity_used, unit_price_at_use)
 VALUES
@@ -122,9 +122,9 @@ VALUES
 
 COMMIT;
 
--- =====================================================
+
 -- VERIFICATION
--- =====================================================
+
 SELECT 'mechanic' AS table_name, COUNT(*) AS row_count FROM mechanic
 UNION ALL
 SELECT 'service_order', COUNT(*) FROM service_order
