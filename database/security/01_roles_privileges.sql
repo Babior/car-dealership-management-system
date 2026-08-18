@@ -1,15 +1,7 @@
--- =====================================================
--- CAR DEALERSHIP MANAGEMENT SYSTEM
--- PHASE 7: DATABASE ROLES AND PRIVILEGES
--- Owner: Ean
--- DBMS: MySQL 8.0+
--- =====================================================
+
 
 USE car_dealership_db;
-
--- =====================================================
 -- 1. CREATE ROLES
--- =====================================================
 
 CREATE ROLE IF NOT EXISTS
     'dealership_admin',
@@ -20,9 +12,7 @@ CREATE ROLE IF NOT EXISTS
     'dealership_service_advisor',
     'dealership_mechanic';
 
--- =====================================================
 -- 2. ADMINISTRATOR PRIVILEGES
--- =====================================================
 -- Manages employees, departments, job roles and accounts.
 -- Transactional tables are read-only for this role.
 
@@ -119,9 +109,8 @@ GRANT SELECT
 ON car_dealership_db.warranty_claim
 TO 'dealership_admin';
 
--- =====================================================
+
 -- 6. INVENTORY OFFICER PRIVILEGES
--- =====================================================
 
 GRANT SELECT, INSERT, UPDATE
 ON car_dealership_db.manufacturer
@@ -147,9 +136,7 @@ GRANT SELECT
 ON car_dealership_db.service_part
 TO 'dealership_inventory';
 
--- =====================================================
 -- 7. SERVICE ADVISOR PRIVILEGES
--- =====================================================
 
 GRANT SELECT
 ON car_dealership_db.manufacturer
@@ -214,9 +201,7 @@ GRANT SELECT, INSERT, UPDATE
 ON car_dealership_db.warranty_claim
 TO 'dealership_service_advisor';
 
--- =====================================================
 -- 8. MECHANIC PRIVILEGES
--- =====================================================
 
 GRANT SELECT
 ON car_dealership_db.vehicle
@@ -276,9 +261,7 @@ GRANT SELECT
 ON car_dealership_db.warranty_claim
 TO 'dealership_mechanic';
 
--- =====================================================
 -- 9. DISPLAY ROLE GRANTS
--- =====================================================
 
 SHOW GRANTS FOR 'dealership_admin';
 SHOW GRANTS FOR 'dealership_manager';
@@ -287,10 +270,3 @@ SHOW GRANTS FOR 'dealership_finance';
 SHOW GRANTS FOR 'dealership_inventory';
 SHOW GRANTS FOR 'dealership_service_advisor';
 SHOW GRANTS FOR 'dealership_mechanic';
-
--- =====================================================
--- END OF ROLE AND PRIVILEGE SCRIPT
--- No operational role has been granted DELETE.
--- Phase 6 object privileges will be added only after
--- their exact view, procedure and function names are checked.
--- =====================================================
